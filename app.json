@@ -107,9 +107,6 @@
         {
             "path": "app.js",
             "bundle": true
-        },{
-            "path" : "data/tabletop.js",
-            "bundle" : true
         }, {
             "path" : "data/d3.min.js",
             "bundle" : true

@@ -1,30 +1,60 @@
 Ext.define('D3.Base', {
-	extend: 'Ext.Component',
-	xtype: 'd3visualization',
+    extend: 'Ext.Component',
+    xtype: 'd3visualization',
 
-	config: {
-		store: ''
-	},
+    config: {
+        store: '',
+        width: 500,
+        height: 500
+    },
 
-	scrollable: true,
+    scrollable: true,
 
-	listeners: {
-		afterrender: {
-			fn: 'drawBubbles',
-			scope: 'this'
-		}
-	},
+    listeners: {
+        afterrender: {
+            fn: 'drawBubbles',
+            scope: 'this'
+        },
+        storechange: {
+            fn: 'drawBubbles',
+            scope: 'this'         
+        }
+    },
 
-    //the applyStore, bindStore and unBindStore,
+    //these functions
     //where just copied from a Sencha component
     //I just looked into one of the Sencha chart classes.
     //http://dev.sencha.com/ext/5.0.1/examples/kitchensink/?charts=true#all
 
-	applyStore: function (store) {
+    defaultBindProperty: 'store',
+    constructor: function (config) {
+        var me = this,
+            store;
+
+        me.ownerGrid = (config && config.ownerGrid) || me;
+
+        me.callParent([config]);
+
+        store = this.store;
+
+        // Any further changes become stateful.
+        store.trackStateChanges = true;
+
+        if (me.autoLoad) {
+            store.unblockLoad();
+            store.load();
+        }
+    },
+
+    applyStore: function (store) {
         return store && Ext.StoreManager.lookup(store);
     },
 
-	bindStore: function(store, initial) {
+    updateStore: function (newStore, oldStore) {
+        var me = this;
+        me.fireEvent('storechange', newStore, oldStore);
+    },
+    bindStore: function(store, initial) {
         var me = this,
             view = me.getView(),
             bufferedRenderer = me.bufferedRenderer;
@@ -98,26 +128,38 @@ Ext.define('D3.Base', {
         /* This will be the most difficult part,
         writing D3 code :) - I just used a tutorial */
 
-    	var me = this,
-        dom = this.getEl().dom, //the generated sencha DOM
-        data = me.getStore(); //the store which was bound
 
-    	var bubble = d3.layout.pack().sort(null).size([960,560]).padding(1.5),
-    		data = this.getData(data);
+        if(!this.getEl()) return;
 
-    	var a = bubble.nodes(data);
+        var me = this;
+        var dom = this.getEl().dom; //the generated sencha DOM
+        var data = me.getStore(); //the store which was bound
 
-    	//draw the component
-		var svg = d3.select(dom)
+        if(typeof data !== 'object') return;
+
+        var data = this.getData(data);
+        var bubble = d3.layout.pack().sort(null).size([this.getWidth(),this.getHeight()]).padding(1.5);
+    
+        var a = bubble.nodes(data);
+
+        //the current data
+        //console.log(a);
+
+        //first remove component
+        if(d3.select("svg").length > 0) {
+            d3.select("svg").remove();
+        }
+        //draw the component
+        var svg = d3.select(dom)
             .append("svg")
-            .attr("width",960)
-            .attr("height", 560)
+            .attr("width", this.getWidth())
+            .attr("height", this.getHeight())
             .attr("class","bubble");
 
-         	//For each “leaf” we then need to create a graphical element. 
-         	//D3.js uses a very clever approach for this.
-         	//The key thing here is the data() method. We pass this the bubble layout we created earlier, and ask it to create the nodes based on our root object. (We also filter out the root node itself as we’re not interested in drawing that, just the individual leaf nodes.) The enter() method is then called for each leaf node in the tree, which appends a <g> element to the <svg> element in our HTML document, and applies the transform property to it to place it at the correct x and y coordinates within the chart.
-         	var node = svg.selectAll(".node")
+            //For each “leaf” we then need to create a graphical element. 
+            //D3.js uses a very clever approach for this.
+            //The key thing here is the data() method. We pass this the bubble layout we created earlier, and ask it to create the nodes based on our root object. (We also filter out the root node itself as we’re not interested in drawing that, just the individual leaf nodes.) The enter() method is then called for each leaf node in the tree, which appends a <g> element to the <svg> element in our HTML document, and applies the transform property to it to place it at the correct x and y coordinates within the chart.
+            var node = svg.selectAll(".node")
               .data(bubble.nodes(data)
               .filter(function(d){ return !d.children;}))
               .enter()
@@ -126,13 +168,13 @@ Ext.define('D3.Base', {
               .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
             var colour = d3.scale.category10();
-			node.append("circle")
-			    .attr("r", function(d) { return d.r; })
-			    .style("fill", function(d) { return colour(d.name); });
-			node.append("text")
-			    .attr("dy", ".3em")
-			    .style("text-anchor", "middle")
-			    .text(function(d) { return d.name; });
+            node.append("circle")
+                .attr("r", function(d) { return d.r; })
+                .style("fill", function(d) { return colour(d.name); });
+            node.append("text")
+                .attr("dy", ".3em")
+                .style("text-anchor", "middle")
+                .text(function(d) { return d.name; });
 
 
     },
@@ -143,31 +185,35 @@ Ext.define('D3.Base', {
         this was probably not required,
         but I used a normal store for my Excel data */
 
-		var data = [],
-	  	i = 0,
-	  	result = {},
-	  	myarr = [];
-	 
-	    //create a flat array of all countries
-		root.each(function(rec){
-			data.push(rec.getData().country);
-		});
+        //in case you want to sublass this Base class
+        //the getData() function might be moved over
 
-		//count all countries
-		for(i = 0; i < data.length; i++) {
-	    	if(!result[data[i]]) result[data[i]] = 0;
-	    	++result[data[i]];
-		}
+        var data = [],
+        i = 0,
+        result = {},
+        myarr = [];
 
-		//make the object
-		for(key in result){
-			var obj = {};
-			obj.name = key,
-			obj.value = Number(result[key])
-			myarr.push(obj);
-		}
+        //create a flat array of all countries
+        root.each(function(rec){
+            data.push(rec.getData().country);
+        });
 
-		console.log(myarr);
-	  	return {children: myarr};
+        //count all countries
+        for(i = 0; i < data.length; i++) {
+            if(!result[data[i]]) result[data[i]] = 0;
+            ++result[data[i]];
+        }
+
+        //make the object
+        for(key in result){
+            var obj = {};
+            obj.name = key,
+            obj.value = Number(result[key])
+            myarr.push(obj);
+        }
+
+        console.log(myarr);
+
+        return {children: myarr};
     }
 });
