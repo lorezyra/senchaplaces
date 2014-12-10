@@ -1,0 +1,21 @@
+{
+    "name": "D3",
+    "type": "code",
+    "creator": "Lee Boonstra",
+    "summary": "This is a D3 visualization, which makes use of the D3 framework.",
+    "detailedDescription": "This is a D3 visualization, which makes use of the D3 framework.",
+    "version": "1.0.0",
+    "compatVersion": "1.0.0",
+    "format": "1",
+    "slicer": {
+        "js": [
+            {
+                "path": "${package.dir}/sass/example/custom.js",
+                "isWidgetManifest": true
+            }
+        ]
+    },
+    "output": "${package.dir}/build",
+    "local": true,
+    "requires": []
+}
