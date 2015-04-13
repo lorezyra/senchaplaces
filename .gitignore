@@ -35,13 +35,15 @@ Thumbs.db
 # Sencha #
 ############
 
-bootstrap.js
-bootstrap.css
-example.css
-
+ext/
+touch/
 temp/
 build/
 .sencha_backup/
 *slicer-temp*
 gwt-unitCache
 .sass-cache/
+.sencha/
+bootstrap.json
+bootstrap.js
+bootstrap.css
